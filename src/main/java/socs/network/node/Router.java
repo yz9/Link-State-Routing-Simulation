@@ -4,6 +4,7 @@ import socs.network.util.Configuration;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.Socket;
 
 
 public class Router {
@@ -17,6 +18,7 @@ public class Router {
 
   public Router(Configuration config) {
     rd.simulatedIPAddress = config.getString("socs.network.router.ip");
+    rd.processPortNumber = config.getShort("socs.network.router.port");
     lsd = new LinkStateDatabase(rd);
   }
 
@@ -41,6 +43,24 @@ public class Router {
 
   }
 
+  // return -1 if not found else return the available index.
+  private int findAvailablePort(){
+    for(int i = 0; i < 4; i++){
+      if(ports[i] == null){
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  private boolean containsIP(String simulatedIP){
+    for(int i = 0; i < 4; i++){
+      if(ports[i].router2.simulatedIPAddress.equals(simulatedIP)){
+        return true;
+      }
+    }
+    return false;
+  }
   /**
    * attach the link to the remote router, which is identified by the given simulated ip;
    * to establish the connection via socket, you need to indentify the process IP and process Port;
@@ -48,8 +68,35 @@ public class Router {
    * <p/>
    * NOTE: this command should not trigger link database synchronization
    */
-  private void processAttach(String processIP, short processPort,
-                             String simulatedIP, short weight) {
+  private void processAttach(String processIP, short processPort, String simulatedIP, short weight) {
+    // check if there exists at least one available ports
+    int linkIndex = findAvailablePort();
+    // case 1: all ports are used
+    if(linkIndex == -1){
+      System.err.println("error: no available port");
+      return;
+    }
+
+    // case 2: if router is trying to connect to itself
+    if(simulatedIP.equals(rd.simulatedIPAddress)){
+      System.err.println("error");
+      return;
+    }
+
+    // case 3: check if the requested router has already connected with our router.
+    if(containsIP(simulatedIP)){
+      System.err.println("error");
+      return;
+    }
+
+    RouterDescription r2 = new RouterDescription();
+    r2.processIPAddress = processIP;
+    r2.processPortNumber = processPort;
+    r2.simulatedIPAddress = simulatedIP;
+    ports[linkIndex] = new Link(rd, r2, weight);
+
+    // attach the link to the remote router
+    // TODO socket stuff
 
   }
 
@@ -76,7 +123,6 @@ public class Router {
    * output the neighbors of the routers
    */
   private void processNeighbors() {
-
   }
 
   /**
