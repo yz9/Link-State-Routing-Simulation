@@ -55,8 +55,10 @@ public class Router {
 
   private boolean containsIP(String simulatedIP){
     for(int i = 0; i < 4; i++){
-      if(ports[i].router2.simulatedIPAddress.equals(simulatedIP)){
-        return true;
+      if(ports[i]!= null){
+        if(ports[i].router2.simulatedIPAddress.equals(simulatedIP)){
+          return true;
+        }
       }
     }
     return false;
@@ -123,6 +125,11 @@ public class Router {
    * output the neighbors of the routers
    */
   private void processNeighbors() {
+    for(int i = 0; i < 4; i++){
+      if(ports[i] != null){
+        System.out.println("IP address of neighbor " + i + ":" + ports[i].router2.simulatedIPAddress);
+      }
+    }
   }
 
   /**
