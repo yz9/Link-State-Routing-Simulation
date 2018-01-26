@@ -22,6 +22,10 @@ public class Router {
 	public Router(Configuration config) {
 		rd.simulatedIPAddress = config.getString("socs.network.router.ip");
 		rd.processPortNumber = config.getShort("socs.network.router.port");
+		// start server
+		//Thread server = new Thread(new Server(rd, ports));
+		//server.start();
+
 		lsd = new LinkStateDatabase(rd);
 	}
 

@@ -7,22 +7,24 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server implements Runnable {
-  private RouterDescription rd;
-  private ServerSocket server;
+    private RouterDescription rd;
+    private ServerSocket server;
+    private Link[] ports;
 
-  public Server(RouterDescription rd){
-    this.rd = rd;
-  }
+    public Server(RouterDescription rd, Link[] ports){
+      this.rd = rd;
+      this.ports = ports;
+    }
 
-  public void run(){
-    System.out.println("server side" );
-    try {
-      server = new ServerSocket(this.rd.processPortNumber);
-      System.out.println("Waiting for client on port: " + this.rd.processPortNumber);
+    public void run(){
+      System.out.println("server side" );
+      try {
+        server = new ServerSocket(this.rd.processPortNumber);
       while (true) {
         Socket connection = server.accept();
-        System.out.println("Just connected to " + connection.getRemoteSocketAddress());
-        Client client = new Client(connection, this.rd);
+        //System.out.println("Just connected to " + connection.getRemoteSocketAddress());
+        Thread client = new Thread(new Client(connection, this.rd, this.ports));
+        client.start();
         //client.connect();
       }
     } catch (IOException e) {
