@@ -12,20 +12,21 @@ public class EchoExample {
 		DataInputStream inputStream;
 		PrintStream os;
 		Socket clientSocket = null;
-		
+
 		// create the server
 		try {
 			echoServer = new ServerSocket(9999);
 		} catch (Exception e) {
 			System.out.println(e);
 		}
-		
+
+		/* 
 		try {
 			clientSocket = echoServer.accept();
 		}
-		
-		
+		*/
+
 	}
-	
-	
+
+
 }
