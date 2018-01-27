@@ -6,6 +6,8 @@ import socs.network.util.Configuration;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -23,8 +25,8 @@ public class Router {
 		rd.simulatedIPAddress = config.getString("socs.network.router.ip");
 		rd.processPortNumber = config.getShort("socs.network.router.port");
 		// start server
-		//Thread server = new Thread(new Server(rd, ports));
-		//server.start();
+		Thread server = new Thread(new Server(rd, ports));
+		server.start();
 
 		lsd = new LinkStateDatabase(rd);
 	}
@@ -113,7 +115,6 @@ public class Router {
 		try {
 			Socket connectionToRemote = new Socket(processIP, processPort);
 			InetAddress local = connectionToRemote.getLocalAddress();
-
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -127,6 +128,44 @@ public class Router {
 	 * broadcast Hello to neighbors
 	 */
 	private void processStart() {
+		// TODO test
+		int index = -1;
+		for (int i = 0; i < 4; i++){
+			if (ports[i] != null){
+				try {
+					// TODO test
+					Socket client = new Socket(ports[i].router2.processIPAddress, ports[i].router2.processPortNumber);
+					ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+					ObjectInputStream in = new ObjectInputStream(client.getInputStream());
+
+					SOSPFPacket packet = new SOSPFPacket(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 0);
+					out.writeObject(packet);
+
+					SOSPFPacket recv = (SOSPFPacket) in.readObject();
+
+					if (recv == null){
+						System.err.println("missing packet");
+						return;
+					}
+
+					if(recv.sospfType != 0){
+						System.err.println("wrong packet type");
+						return;
+					}
+					else{
+						System.out.println("received HELLO from " + recv.srcIP + ";");
+						ports[i].router1.status = RouterStatus.TWO_WAY;
+						System.out.println("set " + recv.srcIP + "state to TWO_WAY");
+					}
+
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+			  }
+			}
+		}
+
 
 	}
 
