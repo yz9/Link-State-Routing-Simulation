@@ -24,10 +24,12 @@ public class Router {
     public Router(Configuration config) {
         rd.simulatedIPAddress = config.getString("socs.network.router.ip");
         rd.processPortNumber = config.getShort("socs.network.router.port");
-        // start server
-        Thread server = new Thread(new Server(rd, ports));
-        server.start();
-
+        
+        try {
+			rd.processIPAddress = InetAddress.getLocalHost().getHostAddress();
+		} catch (UnknownHostException e) {
+			System.out.println("No host ip...");
+		}
         lsd = new LinkStateDatabase(rd);
     }
 
@@ -104,22 +106,39 @@ public class Router {
             return;
         }
 
-        RouterDescription r2 = new RouterDescription();
-        r2.processIPAddress = processIP;
-        r2.processPortNumber = processPort;
-        r2.simulatedIPAddress = simulatedIP;
-        ports[linkIndex] = new Link(rd, r2, weight);
+        RouterDescription remoteRouter = new RouterDescription();
+        remoteRouter.processIPAddress = processIP;
+        remoteRouter.processPortNumber = processPort;
+        remoteRouter.simulatedIPAddress = simulatedIP;
 
         // attach the link to the remote router
         // TODO socket stuff
         try {
-            Socket connectionToRemote = new Socket(processIP, processPort);
-            InetAddress local = connectionToRemote.getLocalAddress();
+            Socket remoteSocket = new Socket(processIP, processPort);
+            InetAddress local = remoteSocket.getLocalAddress();
+            ObjectOutputStream output = new ObjectOutputStream(remoteSocket.getOutputStream());
+            ObjectInputStream input = new ObjectInputStream(remoteSocket.getInputStream());
+            
+            output.writeObject("Try to attach...");
+            try {
+                String message = (String) input.readObject();
+                if (message.equals("Success")) {
+                    // if all goes well, assign the new router link to the available port
+                    ports[linkIndex] = new Link(rd, remoteRouter);
+                    // close the stream and socket
+                    input.close();
+                    output.close();
+                    remoteSocket.close();
+                }
+            } catch (ClassNotFoundException e) {
+                System.err.println(e);
+            } catch (NullPointerException e) {
+                System.err.println(e);
+            }
+            
         } catch (UnknownHostException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
