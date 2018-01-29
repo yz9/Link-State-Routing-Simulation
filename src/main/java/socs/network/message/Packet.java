@@ -4,7 +4,7 @@ import java.io.*;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SOSPFPacket implements Serializable {
+public class Packet implements Serializable {
 
 	// for inter-process communication
 	public String srcProcessIP;
@@ -30,22 +30,22 @@ public class SOSPFPacket implements Serializable {
 	// used for attach (link establishment)
 	public int weight;
 
-	public SOSPFPacket(String simulatedSrcIP, String simulatedDstIP, short packetType) {
+	public Packet(String simulatedSrcIP, String simulatedDstIP, short packetType) {
 		this.srcIP = simulatedSrcIP;
 		this.dstIP = simulatedDstIP;
 		this.sospfType = packetType;
 	}
 
 	// create a LinkState Update package
-	public static SOSPFPacket LSAUPDATE(String simulatedSrcIP, String simulatedDstIP, Vector<LSA> lsaArray) {
-		SOSPFPacket packet = new SOSPFPacket(simulatedSrcIP, simulatedDstIP, (short) 1);
+	public static Packet LSAUPDATE(String simulatedSrcIP, String simulatedDstIP, Vector<LSA> lsaArray) {
+		Packet packet = new Packet(simulatedSrcIP, simulatedDstIP, (short) 1);
 		packet.lsaArray = lsaArray;
 		return packet;
 	}
 
 	// create a AttachLinkRequest packet used in attach()
-	public static SOSPFPacket AttachLinkRequest(String simulatedSrcIP, String simulatedDstIP, int weight) {
-		SOSPFPacket packet = new SOSPFPacket(simulatedSrcIP, simulatedDstIP, (short) 2);
+	public static Packet AttachLinkRequest(String simulatedSrcIP, String simulatedDstIP, int weight) {
+		Packet packet = new Packet(simulatedSrcIP, simulatedDstIP, (short) 2);
 		packet.weight = weight;
 		return packet;
 	}

@@ -8,7 +8,7 @@ import java.net.Socket;
 
 public class Server implements Runnable {
     private RouterDescription rd;
-    private ServerSocket server;
+    private ServerSocket socket;
     private Link[] ports;
 
     public Server(RouterDescription rd, Link[] ports) {
@@ -19,9 +19,9 @@ public class Server implements Runnable {
     public void run() {
         System.out.println("server side");
         try {
-            server = new ServerSocket(this.rd.processPortNumber);
+            socket = new ServerSocket(this.rd.processPortNumber);
             while (true) {
-                Socket connection = server.accept();
+                Socket connection = socket.accept();
                 //System.out.println("Just connected to " + connection.getRemoteSocketAddress());
                 Thread client = new Thread(new Client(connection, this.rd, this.ports));
                 client.start();
