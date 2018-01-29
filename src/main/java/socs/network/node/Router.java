@@ -133,12 +133,12 @@ public class Router {
                     // if all goes well, assign the new router link to the available port
                     ports[linkIndex] = new Link(rd, remoteRouter);
                     // close the stream and socket
+                    System.out.println("--- attached with " + linkeRequest.dstIP + " ---");
                     input.close();
                     output.close();
                     remoteSocket.close();
                 } else {
                 	System.out.println("error");
-                	return;
                 }
             } catch (ClassNotFoundException e) {
                 System.err.println(e);
@@ -158,7 +158,6 @@ public class Router {
      */
     private void processStart() {
         // TODO test
-        int index = -1;
         for (int i = 0; i < 4; i++) {
             if (ports[i] != null) {
                 try {
@@ -169,22 +168,29 @@ public class Router {
 
                     Packet packet = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 0);
                     out.writeObject(packet);
-
+                    System.out.println("--- first msg ---");
                     Packet recv = (Packet) in .readObject();
 
                     if (recv == null) {
                         System.err.println("missing packet");
-                        return;
+                        break;
                     }
 
                     if (recv.sospfType != 0) {
                         System.err.println("wrong packet type");
-                        return;
+                        break;
                     } else {
                         System.out.println("received HELLO from " + recv.srcIP + ";");
                         ports[i].router1.status = RouterStatus.TWO_WAY;
-                        System.out.println("set " + recv.srcIP + "state to TWO_WAY");
+                        System.out.println("set " + recv.srcIP + " state to TWO_WAY");
+                        packet = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 0);
+                        out.writeObject(packet);
+                        System.out.println("--- second msg ---");
                     }
+                    // clean up
+                    out.close();
+                    in.close();
+                    client.close();
 
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -215,7 +221,7 @@ public class Router {
     private void processNeighbors() {
         for (int i = 0; i < 4; i++) {
             if (ports[i] != null) {
-                System.out.println("IP address of neighbor " + i + ":" + ports[i].router2.simulatedIPAddress);
+                System.out.println("IP address of neighbor- " + (i + 1) + ": " + ports[i].router2.simulatedIPAddress);
             }
         }
     }

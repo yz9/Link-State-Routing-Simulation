@@ -4,8 +4,6 @@ import socs.network.message.Packet;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.InputStreamReader;
-import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Client implements Runnable {
@@ -39,7 +37,7 @@ public class Client implements Runnable {
 		return -1;
 	}
 
-	// TODO test
+	// TODO: test with multiple routers
 	public void run() {
 		try {
 			System.out.println("Connecting to " + this.rd.simulatedIPAddress + " on port " + this.rd.processPortNumber);
@@ -55,55 +53,73 @@ public class Client implements Runnable {
 				System.err.println("Error: Empty packet");
 				return;
 			}
-
-			// process attach
-			Link link = null;
-			int index = getRouter2Index(ports, packet.srcIP);
-			while (true) {
-				
-				if (packet.dstIP == rd.simulatedIPAddress) {
+			
+			/*
+			 * Handle received packet accordingly based on the packet type
+			 */
+			if (packet.sospfType == 0) {
+				// handle HELLO message
+				System.out.println("--received---");
+				Link link = null;
+				int index = getRouter2Index(ports, packet.srcIP);
+				if (packet.dstIP.equals(rd.simulatedIPAddress)) {
 					RouterDescription remote = new RouterDescription();
 					remote.processPortNumber = packet.srcProcessPort;
 					remote.simulatedIPAddress = packet.srcIP;
 
 					// create a new link if not exists
-					if (index != -1) {
+					if (index == -1) {
 						int spot = findAvailablePort(ports);
 						if (spot != -1) {
 							// add link to ports
 							link = new Link(rd, remote);
 							ports[spot] = link;
+							index = spot;
+						} else {
+							System.err.println("error: no available port");
+							return;
 						}
-						System.err.println("error: no available port");
-						return;
 					} else {
 						link = ports[index];
 					}
 				}
-				// Start
-				// if receive hello
-				if (packet.sospfType == 0) {
-					// TODO handles hello part
-					System.out.println("received HELLO from " + packet.srcIP + ";");
-					if (link.router2.status == null) {
-						link.router2.status = RouterStatus.INIT;
-						System.out.println("set " + packet.srcIP + " state to INIT");
+				System.out.println("received HELLO from " + packet.srcIP + ";");
+				if (link.router2.status == null) {
+					link.router2.status = RouterStatus.INIT;
+					System.out.println("set " + packet.srcIP + " state to INIT");
+					// send response package 
+					Packet send = new Packet(rd.simulatedIPAddress, ports[index].router2.simulatedIPAddress, (short) 0);
+					out.writeObject(send);
+					Packet response = (Packet) in.readObject();
+					if(response == null || response.sospfType != 0) {
+						System.out.println("Error: echo Message wrong");
 					} else {
+						System.out.println("received HELLO from " + packet.srcIP + ";");
 						link.router2.status = RouterStatus.TWO_WAY;
 						System.out.println("set " + packet.srcIP + " state to TWO_WAY");
-
-						Packet send = new Packet(rd.simulatedIPAddress, ports[index].router2.simulatedIPAddress,
-								(short) 0);
-
-						out.writeObject(send);
 					}
-				} else if (packet.sospfType == 2) {
-					// if its a link state update packet, write a string message back
-					out.writeObject("Success");
+				} else {
+					link.router2.status = RouterStatus.TWO_WAY;
+					System.out.println("set " + packet.srcIP + " state to TWO_WAY");
 				}
-
+				
+			} else if (packet.sospfType == 1) {
+				// do something....
+			} else if (packet.sospfType == 2) { 
+				/*
+				 * handle attach command.
+				 * write a string message back as confirmation
+				 */
+				out.writeObject("Success");
+				System.out.println("--- attached with " + packet.srcIP + " ---");
+			} else {
+				System.out.println("unexpected error");
 			}
-
+			// clean up
+			client.close();
+			in.close();
+			out.close();
+			System.out.print(">>");
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ClassNotFoundException e) {
