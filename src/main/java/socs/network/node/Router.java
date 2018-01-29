@@ -1,6 +1,6 @@
 package socs.network.node;
 
-import socs.network.message.SOSPFPacket;
+import socs.network.message.Packet;
 import socs.network.util.Configuration;
 
 import java.io.BufferedReader;
@@ -30,7 +30,14 @@ public class Router {
 		} catch (UnknownHostException e) {
 			System.out.println("No host ip...");
 		}
+		System.out.println("Process IP - " + rd.processIPAddress);
+        System.out.println("Port Number - " + rd.processPortNumber);
+        System.out.println("Simulated IP - " + rd.simulatedIPAddress);
         lsd = new LinkStateDatabase(rd);
+        
+        // now create the server socket
+        Thread server = new Thread(new Server(rd, ports));
+        server.start();
     }
 
     /**
@@ -114,12 +121,12 @@ public class Router {
         // attach the link to the remote router
         // TODO socket stuff
         try {
+        	// create 
             Socket remoteSocket = new Socket(processIP, processPort);
-            InetAddress local = remoteSocket.getLocalAddress();
             ObjectOutputStream output = new ObjectOutputStream(remoteSocket.getOutputStream());
             ObjectInputStream input = new ObjectInputStream(remoteSocket.getInputStream());
-            
-            output.writeObject("Try to attach...");
+            Packet linkeRequest = Packet.AttachLinkRequest(this.rd.simulatedIPAddress, simulatedIP, (short) 0);
+            output.writeObject(linkeRequest);
             try {
                 String message = (String) input.readObject();
                 if (message.equals("Success")) {
@@ -129,6 +136,9 @@ public class Router {
                     input.close();
                     output.close();
                     remoteSocket.close();
+                } else {
+                	System.out.println("error");
+                	return;
                 }
             } catch (ClassNotFoundException e) {
                 System.err.println(e);
@@ -157,10 +167,10 @@ public class Router {
                     ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
                     ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 
-                    SOSPFPacket packet = new SOSPFPacket(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 0);
+                    Packet packet = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 0);
                     out.writeObject(packet);
 
-                    SOSPFPacket recv = (SOSPFPacket) in .readObject();
+                    Packet recv = (Packet) in .readObject();
 
                     if (recv == null) {
                         System.err.println("missing packet");
