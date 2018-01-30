@@ -37,7 +37,6 @@ public class Client implements Runnable {
 		return -1;
 	}
 
-	// TODO: test with multiple routers
 	public void run() {
 		try {
 			System.out.println("Connecting to " + this.rd.simulatedIPAddress + " on port " + this.rd.processPortNumber);
@@ -53,7 +52,7 @@ public class Client implements Runnable {
 				System.err.println("Error: Empty packet");
 				return;
 			}
-			
+
 			/*
 			 * Handle received packet accordingly based on the packet type
 			 */
@@ -76,36 +75,43 @@ public class Client implements Runnable {
 							ports[spot] = link;
 							index = spot;
 						} else {
-							System.err.println("error: no available port");
+							System.err.println("Error: All ports has been used");
 							return;
 						}
 					} else {
 						link = ports[index];
 					}
 				}
-				System.out.println("received HELLO from " + packet.srcIP + ";");
-				if (link.router2.status == null) {
-					link.router2.status = RouterStatus.INIT;
-					System.out.println("set " + packet.srcIP + " state to INIT");
-					// send response package 
-					Packet send = new Packet(rd.simulatedIPAddress, ports[index].router2.simulatedIPAddress, (short) 0);
+
+        Packet send = new Packet(rd.simulatedIPAddress, ports[index].router2.simulatedIPAddress, (short) 0);
+        // note that a router can only start with the same router once.
+				if (ports[index].router2.status != RouterStatus.TWO_WAY) {
+          // received a HELLO msg, set status of srcRouter to INIT
+          System.out.println("received HELLO from " + packet.srcIP + ";");
+					ports[index].router2.status = RouterStatus.INIT;
+					System.out.println("set " + ports[index].router2.simulatedIPAddress + " state to INIT");
+					// send response package
 					out.writeObject(send);
-					Packet response = (Packet) in.readObject();
-					if(response == null || response.sospfType != 0) {
-						System.out.println("Error: echo Message wrong");
-					} else {
-						System.out.println("received HELLO from " + packet.srcIP + ";");
-						link.router2.status = RouterStatus.TWO_WAY;
-						System.out.println("set " + packet.srcIP + " state to TWO_WAY");
-					}
-				} else {
-					link.router2.status = RouterStatus.TWO_WAY;
-					System.out.println("set " + packet.srcIP + " state to TWO_WAY");
-				}
-				
+
+          // waiting for hello msg
+          Packet recv = (Packet) in.readObject();
+          if(recv == null) {
+            System.err.println("Error: missing packet");
+            return;
+          }
+          else{
+            System.out.println("received HELLO from " + packet.srcIP + ";");
+            ports[index].router2.status = RouterStatus.TWO_WAY;
+            System.out.println("set " + ports[index].router2.simulatedIPAddress + " state to TWO_WAY");
+          }
+        }
+        else{
+          System.err.println("Error: Already set " + ports[index].router2.simulatedIPAddress + " to TWO_WAY!");
+        }
+
 			} else if (packet.sospfType == 1) {
 				// do something....
-			} else if (packet.sospfType == 2) { 
+			} else if (packet.sospfType == 2) {
 				/*
 				 * handle attach command.
 				 * write a string message back as confirmation
@@ -113,7 +119,7 @@ public class Client implements Runnable {
 				out.writeObject("Success");
 				System.out.println("--- attached with " + packet.srcIP + " ---");
 			} else {
-				System.out.println("unexpected error");
+				System.err.println("Error: Unexpected error");
 			}
 			// clean up
 			client.close();

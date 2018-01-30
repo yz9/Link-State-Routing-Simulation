@@ -7,28 +7,28 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server implements Runnable {
-    private RouterDescription rd;
-    private ServerSocket socket;
-    private Link[] ports;
+  private RouterDescription rd;
+  private ServerSocket socket;
+  private Link[] ports;
 
-    public Server(RouterDescription rd, Link[] ports) {
-        this.rd = rd;
-        this.ports = ports;
-    }
+  public Server(RouterDescription rd, Link[] ports) {
+    this.rd = rd;
+    this.ports = ports;
+  }
 
-    public void run() {
-        System.out.println("server side");
-        try {
-            socket = new ServerSocket(this.rd.processPortNumber);
-            while (true) {
-                Socket connection = socket.accept();
-                //System.out.println("Just connected to " + connection.getRemoteSocketAddress());
-                Thread client = new Thread(new Client(connection, this.rd, this.ports));
-                client.start();
-                //client.connect();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+  public void run() {
+    // System.out.println("server side");
+    try {
+      socket = new ServerSocket(this.rd.processPortNumber);
+      while (true) {
+        Socket connection = socket.accept();
+        //System.out.println("Just connected to " + connection.getRemoteSocketAddress());
+        Thread client = new Thread(new Client(connection, this.rd, this.ports));
+        client.start();
+        //client.connect();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
     }
+  }
 }
