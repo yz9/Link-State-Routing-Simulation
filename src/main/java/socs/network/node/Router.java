@@ -183,7 +183,7 @@ public class Router {
             }
           }
           else{
-            System.err.println("Error: Already set " + ports[i].router2.simulatedIPAddress + " to TWO_WAY!");
+            // System.err.println("Error: Already set " + ports[i].router2.simulatedIPAddress + " to TWO_WAY!");
           }
 
            // clean up
