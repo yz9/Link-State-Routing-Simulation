@@ -113,11 +113,7 @@ public class Router {
       return;
     }
 
-    RouterDescription remoteRouter = new RouterDescription();
-    remoteRouter.processIPAddress = processIP;
-    remoteRouter.processPortNumber = processPort;
-    remoteRouter.simulatedIPAddress = simulatedIP;
-
+    RouterDescription remoteRouter = new RouterDescription(processIP, processPort, simulatedIP);
     // attach the link to the remote router
     try {
     	// create
@@ -155,13 +151,21 @@ public class Router {
    * broadcast Hello to neighbors
    */
   private void processStart() {
+
+    if (ports[0] == null){
+      System.err.println("You haven't attached to any other router yet.");
+      return;
+    }
+
     for (int i = 0; i < 4; i++) {
       if (ports[i] != null) {
         try {
           Socket client = new Socket(ports[i].router2.processIPAddress, ports[i].router2.processPortNumber);
           ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
           ObjectInputStream in = new ObjectInputStream(client.getInputStream());
-          Packet packet = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 0);
+          Packet packet = new Packet(this.rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 0);
+          packet.srcProcessIP = this.rd.processIPAddress;
+          packet.srcProcessPort = this.rd.processPortNumber;
           // send hello packet to clienthandler
           out.writeObject(packet);
 
@@ -183,22 +187,23 @@ public class Router {
             }
           }
           else{
-            // System.err.println("Error: Already set " + ports[i].router2.simulatedIPAddress + " to TWO_WAY!");
+            System.err.println("Already connected with router " + ports[i].router2.simulatedIPAddress);
           }
 
            // clean up
           out.close();
           in.close();
           client.close();
-
-         } catch (IOException e) {
-           e.printStackTrace();
-         } catch (ClassNotFoundException e) {
-           e.printStackTrace();
-         }
-       }
-     }
-   }
+        } catch (UnknownHostException e) {
+          System.err.println("Trying to connect to unknown host: " + e);
+        } catch (IOException e) {
+          e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
 
   /**
    * attach the link to the remote router, which is identified by the given
