@@ -103,6 +103,7 @@ public class Client implements Runnable {
             System.out.println("received HELLO from " + packet.srcIP + ";");
             ports[index].router2.status = RouterStatus.TWO_WAY;
             System.out.println("set " + ports[index].router2.simulatedIPAddress + " state to TWO_WAY");
+						System.out.println(">>");
           }
         }
         else{
@@ -125,7 +126,7 @@ public class Client implements Runnable {
 			client.close();
 			in.close();
 			out.close();
-			System.out.println(">>");
+			// System.out.println(">>");
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ClassNotFoundException e) {
