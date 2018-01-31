@@ -122,24 +122,12 @@ public class Router {
       ObjectInputStream input = new ObjectInputStream(remoteSocket.getInputStream());
       Packet linkRequest = Packet.AttachLinkRequest(this.rd.simulatedIPAddress, simulatedIP, (short) 0);
       output.writeObject(linkRequest);
-      try {
-        String message = (String) input.readObject();
-        if (message.equals("Success")) {
-          ports[linkIndex] = new Link(rd, remoteRouter);
-          // close the stream and socket
-          System.out.println("--- attached with " + linkRequest.dstIP + " ---");
-          input.close();
-          output.close();
-          remoteSocket.close();
-        } else {
-        	System.out.println("error");
-        }
-      } catch (ClassNotFoundException e) {
-        System.err.println(e);
-      } catch (NullPointerException e) {
-        System.err.println(e);
-      }
 
+      ports[linkIndex] = new Link(rd, remoteRouter);
+      System.out.println("--- attached with " + linkRequest.dstIP + " ---");
+      input.close();
+      output.close();
+      remoteSocket.close();
     } catch (UnknownHostException e) {
       e.printStackTrace();
     } catch (IOException e) {

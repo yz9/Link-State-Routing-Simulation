@@ -113,7 +113,7 @@ public class Client implements Runnable {
 				 * handle attach command.
 				 * write a string message back as confirmation
 				 */
-				out.writeObject("Success");
+				// out.writeObject("Success");
 				System.out.println("--- attached with " + packet.srcIP + " ---");
 			} else {
 				System.err.println("Error: Unexpected error");
