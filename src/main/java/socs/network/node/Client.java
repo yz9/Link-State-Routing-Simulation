@@ -39,7 +39,7 @@ public class Client implements Runnable {
 
 	public void run() {
 		try {
-			System.out.println("Connecting to " + this.rd.simulatedIPAddress + " on port " + this.rd.processPortNumber);
+			// System.out.println("Connecting to " + this.rd.simulatedIPAddress + " on port " + this.rd.processPortNumber);
 
 			ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 			ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
@@ -58,7 +58,7 @@ public class Client implements Runnable {
 			 */
 			if (packet.sospfType == 0) {
 				// handle HELLO message
-				System.out.println("--received---");
+				// System.out.println("--received---");
 				Link link = null;
 				int index = getRouter2Index(ports, packet.srcIP);
 				if (packet.dstIP.equals(rd.simulatedIPAddress)) {
@@ -103,10 +103,11 @@ public class Client implements Runnable {
             System.out.println("received HELLO from " + packet.srcIP + ";");
             ports[index].router2.status = RouterStatus.TWO_WAY;
             System.out.println("set " + ports[index].router2.simulatedIPAddress + " state to TWO_WAY");
+						System.out.println(">>");
           }
         }
         else{
-          System.err.println("Error: Already set " + ports[index].router2.simulatedIPAddress + " to TWO_WAY!");
+          // System.err.println("Error: Already set " + ports[index].router2.simulatedIPAddress + " to TWO_WAY!");
         }
 
 			} else if (packet.sospfType == 1) {
@@ -125,7 +126,7 @@ public class Client implements Runnable {
 			client.close();
 			in.close();
 			out.close();
-			System.out.print(">>");
+			// System.out.println(">>");
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ClassNotFoundException e) {
