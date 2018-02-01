@@ -210,7 +210,7 @@ public class Router {
    */
   private void processNeighbors() {
     for (int i = 0; i < 4; i++) {
-      if (ports[i] != null) {
+      if (ports[i] != null && ports[i].router2.status == RouterStatus.TWO_WAY) {
         System.out.println("IP address of neighbor " + (i + 1) + ": " + ports[i].router2.simulatedIPAddress);
       }
     }
