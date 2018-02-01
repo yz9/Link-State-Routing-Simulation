@@ -122,24 +122,12 @@ public class Router {
       ObjectInputStream input = new ObjectInputStream(remoteSocket.getInputStream());
       Packet linkRequest = Packet.AttachLinkRequest(this.rd.simulatedIPAddress, simulatedIP, (short) 0);
       output.writeObject(linkRequest);
-      try {
-        String message = (String) input.readObject();
-        if (message.equals("Success")) {
-          ports[linkIndex] = new Link(rd, remoteRouter);
-          // close the stream and socket
-          System.out.println("--- attached with " + linkRequest.dstIP + " ---");
-          input.close();
-          output.close();
-          remoteSocket.close();
-        } else {
-        	System.out.println("error");
-        }
-      } catch (ClassNotFoundException e) {
-        System.err.println(e);
-      } catch (NullPointerException e) {
-        System.err.println(e);
-      }
 
+      ports[linkIndex] = new Link(rd, remoteRouter);
+      System.out.println("--- attached with " + linkRequest.dstIP + " ---");
+      input.close();
+      output.close();
+      remoteSocket.close();
     } catch (UnknownHostException e) {
       e.printStackTrace();
     } catch (IOException e) {
@@ -222,7 +210,7 @@ public class Router {
    */
   private void processNeighbors() {
     for (int i = 0; i < 4; i++) {
-      if (ports[i] != null) {
+      if (ports[i] != null && ports[i].router2.status == RouterStatus.TWO_WAY) {
         System.out.println("IP address of neighbor " + (i + 1) + ": " + ports[i].router2.simulatedIPAddress);
       }
     }
