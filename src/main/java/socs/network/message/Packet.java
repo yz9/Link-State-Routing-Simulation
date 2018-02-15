@@ -2,7 +2,6 @@ package socs.network.message;
 
 import java.io.*;
 import java.util.Vector;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Packet implements Serializable {
 
@@ -18,9 +17,6 @@ public class Packet implements Serializable {
 	public short sospfType; // 0 - HELLO, 1 - LinkState Update
 	public String routerID;
 
-	// used by HELLO message to identify the sender of the message
-	// e.g. when router A sends HELLO to its neighbor, it has to fill this field
-	// with its own
 	// simulated IP address
 	public String neighborID; // neighbor's simulated IP address
 
@@ -34,6 +30,9 @@ public class Packet implements Serializable {
 		this.srcIP = simulatedSrcIP;
 		this.dstIP = simulatedDstIP;
 		this.sospfType = packetType;
+	}
+
+	public Packet() {
 	}
 
 	// create a LinkState Update package

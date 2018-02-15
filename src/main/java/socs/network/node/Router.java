@@ -1,5 +1,7 @@
 package socs.network.node;
 
+import socs.network.message.LSA;
+import socs.network.message.LinkDescription;
 import socs.network.message.Packet;
 import socs.network.util.Configuration;
 
@@ -11,268 +13,339 @@ import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Vector;
 
 public class Router {
 
-  protected LinkStateDatabase lsd;
+	protected LinkStateDatabase lsd;
 
-  RouterDescription rd = new RouterDescription();
+	RouterDescription rd = new RouterDescription();
 
-  // assuming that all routers are with 4 ports
-  Link[] ports = new Link[4];
+	// assuming that all routers are with ports.length ports
+	volatile Link[] ports = new Link[4];
 
-  public Router(Configuration config) {
-    rd.simulatedIPAddress = config.getString("socs.network.router.ip");
-    rd.processPortNumber = config.getShort("socs.network.router.port");
+	public Router(Configuration config) {
+		rd.simulatedIPAddress = config.getString("socs.network.router.ip");
+		rd.processPortNumber = config.getShort("socs.network.router.port");
+		// set processIPAddress to localhost
+		rd.processIPAddress = "127.0.0.1";
 
-    try {
-      rd.processIPAddress = InetAddress.getLocalHost().getHostAddress();
-    } catch (UnknownHostException e) {
-      System.out.println("No host ip...");
-    }
-    System.out.println("Process IP - " + rd.processIPAddress);
-    System.out.println("Port Number - " + rd.processPortNumber);
-    System.out.println("Simulated IP - " + rd.simulatedIPAddress);
-    lsd = new LinkStateDatabase(rd);
+		System.out.println("Process IP - " + rd.processIPAddress);
+		System.out.println("Port Number - " + rd.processPortNumber);
+		System.out.println("Simulated IP - " + rd.simulatedIPAddress);
+		lsd = new LinkStateDatabase(rd);
 
-    // now create the server socket
-    Thread server = new Thread(new Server(rd, ports));
-    server.start();
-  }
+		// now create the server socket
+		Thread server = new Thread(new Server(rd, ports, lsd));
+		server.start();
+	}
 
-  /**
-   * output the shortest path to the given destination ip
-   * <p/>
-   * format: source ip address -> ip address -> ... -> destination ip
-   *
-   * @param destinationIP
-   *      the ip adderss of the destination simulated router
-   */
-  private void processDetect(String destinationIP) {
+	/**
+	 * output the shortest path to the given destination ip format: source ip
+	 * address -> ip address -> ... -> destination ip
+	 *
+	 * @param destinationIP
+	 *            the ip adderss of the destination simulated router
+	 */
+	private void processDetect(String destinationIP) {
+		System.out.println(lsd.getShortestPath(destinationIP));
+	}
 
-  }
+	/**
+	 * disconnect with the router identified by the given destination ip address
+	 * Notice: this command should trigger the synchronization of database
+	 *
+	 * @param portNumber
+	 *            the port number which the link attaches at
+	 */
+	private void processDisconnect(short portNumber) {
 
-  /**
-   * disconnect with the router identified by the given destination ip address
-   * Notice: this command should trigger the synchronization of database
-   *
-   * @param portNumber
-   *      the port number which the link attaches at
-   */
-  private void processDisconnect(short portNumber) {
+	}
 
-  }
+	/**
+	 * attach the link to the remote router, which is identified by the given
+	 * simulated ip; to establish the connection via socket, you need to indentify
+	 * the process IP and process Port; additionally, weight is the cost to
+	 * transmitting data through the link
+	 * <p/>
+	 * NOTE: this command should not trigger link database synchronization
+	 */
+	private void processAttach(String processIP, short processPort, String simulatedIP, short weight) {
+		// check if there exists at least one available ports
+		int linkIndex = findAvailablePort();
+		// case 1: all ports are used
+		if (linkIndex == -1) {
+			System.err.println("Error: All ports has been used.");
+			return;
+		}
 
-  // return -1 if not found else return the available index.
-  private int findAvailablePort() {
-    for (int i = 0; i < 4; i++) {
-      if (ports[i] == null) {
-        return i;
-      }
-    }
-    return -1;
-  }
+		// case 2: if router is trying to connect to itself
+		if (simulatedIP.equals(rd.simulatedIPAddress)) {
+			System.err.println("Error: Router cannot attach to itself");
+			return;
+		}
 
-  private boolean containsIP(String simulatedIP) {
-    for (int i = 0; i < 4; i++) {
-      if (ports[i] != null) {
-        if (ports[i].router2.simulatedIPAddress.equals(simulatedIP)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
+		// case 3: check if the requested router has already connected with our router.
+		if (containsIP(simulatedIP)) {
+			System.err.println("Error: Router has already connected with requested router");
+			return;
+		}
 
-  /**
-   * attach the link to the remote router, which is identified by the given
-   * simulated ip; to establish the connection via socket, you need to indentify
-   * the process IP and process Port; additionally, weight is the cost to
-   * transmitting data through the link
-   * <p/>
-   * NOTE: this command should not trigger link database synchronization
-   */
-  private void processAttach(String processIP, short processPort, String simulatedIP, short weight) {
-    // check if there exists at least one available ports
-    int linkIndex = findAvailablePort();
-    // case 1: all ports are used
-    if (linkIndex == -1) {
-      System.err.println("Error: All ports has been used.");
-      return;
-    }
+		RouterDescription remoteRouter = new RouterDescription(processIP, processPort, simulatedIP);
+		// attach the link to the remote router
+		try {
+			// create
+			Socket remoteSocket = new Socket(processIP, processPort);
+			ObjectOutputStream output = new ObjectOutputStream(remoteSocket.getOutputStream());
+			ObjectInputStream input = new ObjectInputStream(remoteSocket.getInputStream());
+			Packet linkRequest = Packet.AttachLinkRequest(this.rd.simulatedIPAddress, simulatedIP, weight);
+			output.writeObject(linkRequest);
 
-    // case 2: if router is trying to connect to itself
-    if (simulatedIP.equals(rd.simulatedIPAddress)) {
-      System.err.println("Error: Router cannot attach to itself");
-      return;
-    }
+			ports[linkIndex] = new Link(rd, remoteRouter, weight);
+			System.out.println("--- attached with " + linkRequest.dstIP + " ---");
+			input.close();
+			output.close();
+			remoteSocket.close();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
-    // case 3: check if the requested router has already connected with our router.
-    if (containsIP(simulatedIP)) {
-      System.err.println("Error: Router has already connected with requested router");
-      return;
-    }
+	/**
+	 * broadcast Hello to neighbors
+	 */
+	private void processStart() {
 
-    RouterDescription remoteRouter = new RouterDescription(processIP, processPort, simulatedIP);
-    // attach the link to the remote router
-    try {
-    	// create
-      Socket remoteSocket = new Socket(processIP, processPort);
-      ObjectOutputStream output = new ObjectOutputStream(remoteSocket.getOutputStream());
-      ObjectInputStream input = new ObjectInputStream(remoteSocket.getInputStream());
-      Packet linkRequest = Packet.AttachLinkRequest(this.rd.simulatedIPAddress, simulatedIP, (short) 0);
-      output.writeObject(linkRequest);
-      try {
-        String message = (String) input.readObject();
-        if (message.equals("Success")) {
-          ports[linkIndex] = new Link(rd, remoteRouter);
-          // close the stream and socket
-          System.out.println("--- attached with " + linkRequest.dstIP + " ---");
-          input.close();
-          output.close();
-          remoteSocket.close();
-        } else {
-        	System.out.println("error");
-        }
-      } catch (ClassNotFoundException e) {
-        System.err.println(e);
-      } catch (NullPointerException e) {
-        System.err.println(e);
-      }
+		if (ports[0] == null) {
+			System.err.println("You haven't attached to any other router yet.");
+			return;
+		}
 
-    } catch (UnknownHostException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
+		for (int i = 0; i < ports.length; i++) {
+			if (ports[i] != null) {
+				try {
+					Socket client = new Socket(ports[i].router2.processIPAddress, ports[i].router2.processPortNumber);
+					ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+					ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 
-  /**
-   * broadcast Hello to neighbors
-   */
-  private void processStart() {
+					String destIP = ports[i].router2.simulatedIPAddress;
+					short destPort = ports[i].router2.processPortNumber;
+					// initate a new packet
+					Packet packet = new Packet(this.rd.simulatedIPAddress, destIP, (short) 0);
+					packet.srcProcessIP = this.rd.processIPAddress;
+					packet.srcProcessPort = this.rd.processPortNumber;
+					// stail back hello packet
+					out.writeObject(packet);
 
-    if (ports[0] == null){
-      System.err.println("You haven't attached to any other router yet.");
-      return;
-    }
+					// note that a router can only head with the same router once.
+					if (ports[i].router2.status != RouterStatus.TWO_WAY) {
+						Packet recv = (Packet) in.readObject();
 
-    for (int i = 0; i < 4; i++) {
-      if (ports[i] != null) {
-        try {
-          Socket client = new Socket(ports[i].router2.processIPAddress, ports[i].router2.processPortNumber);
-          ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-          ObjectInputStream in = new ObjectInputStream(client.getInputStream());
-          Packet packet = new Packet(this.rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 0);
-          packet.srcProcessIP = this.rd.processIPAddress;
-          packet.srcProcessPort = this.rd.processPortNumber;
-          // send hello packet to clienthandler
-          out.writeObject(packet);
+						if (recv == null) {
+							System.err.println("missing packet");
+							break;
+						}
 
-          // note that a router can only start with the same router once.
-          if(ports[i].router2.status != RouterStatus.TWO_WAY){
-            Packet recv = (Packet) in.readObject();
+						// check if received packet has sospfType "hello"
+						if (recv.sospfType == (short) 0) {
+							System.out.println("received HELLO from " + recv.srcIP + ";");
+							ports[i].router2.status = RouterStatus.TWO_WAY;
+							System.out.println("set " + ports[i].router2.simulatedIPAddress + " state to TWO_WAY");
+							out.writeObject(packet);
+						}
 
-            if (recv == null) {
-              System.err.println("missing packet");
-              break;
-            }
+						// construct lsa
+						LSA lsa = createLSA();
+						// broadcast LSAUPDATE
+						broadcastUpdate(lsa);
 
-            // check if received packet has sospfType "hello"
-            if (recv.sospfType == (short) 0 ) {
-              System.out.println("received HELLO from " + recv.srcIP + ";");
-              ports[i].router2.status = RouterStatus.TWO_WAY;
-              System.out.println("set " +  ports[i].router2.simulatedIPAddress + " state to TWO_WAY");
-              out.writeObject(packet);
-            }
-          }
-          else{
-            System.err.println("Already connected with router " + ports[i].router2.simulatedIPAddress);
-          }
+						/*
+						 * LSA lsa = new LSA(); createLSA1(lsa); Packet LSAUPDATE = new Packet();
+						 * Vector<LSA> links = new Vector<LSA>(); // for (int i = 0; i < ports.length;
+						 * i++) { // if (ports[i] != null) { LSAUPDATE.srcIP = rd.simulatedIPAddress;
+						 * LSAUPDATE.dstIP = ports[i].router2.simulatedIPAddress; LSAUPDATE.sospfType =
+						 * (short) 1; links.add(lsa); LSAUPDATE.lsaArray = links;
+						 *
+						 * out.writeObject(packet);
+						 *
+						 */
+						// iterative
+					} else {
+						System.err.println("Already connected with router " + ports[i].router2.simulatedIPAddress);
+					}
+					/*
+					 * LSA lsa = new LSA(); createLSA1(lsa); Packet LSAUPDATE = new Packet();
+					 * Vector<LSA> links = new Vector<LSA>(); // for (int i = 0; i < ports.length;
+					 * i++) { // if (ports[i] != null) { LSAUPDATE.srcIP = rd.simulatedIPAddress;
+					 * LSAUPDATE.dstIP = ports[i].router2.simulatedIPAddress; LSAUPDATE.sospfType =
+					 * (short) 1; links.add(lsa); LSAUPDATE.lsaArray = links;
+					 *
+					 * out.writeObject(packet);
+					 */
+					// clean up
+					out.close();
+					in.close();
+					client.close();
+				} catch (UnknownHostException e) {
+					System.err.println("Trying to connect to unknown host: " + e);
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
 
-           // clean up
-          out.close();
-          in.close();
-          client.close();
-        } catch (UnknownHostException e) {
-          System.err.println("Trying to connect to unknown host: " + e);
-        } catch (IOException e) {
-          e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-  }
+	/**
+	 * attach the link to the remote router, which is identified by the given
+	 * simulated ip; to establish the connection via socket, you need to indentify
+	 * the process IP and process Port; additionally, weight is the cost to
+	 * transmitting data through the link
+	 * <p/>
+	 * This command does trigger the link database synchronization
+	 */
+	private void processConnect(String processIP, short processPort, String simulatedIP, short weight) {
 
-  /**
-   * attach the link to the remote router, which is identified by the given
-   * simulated ip; to establish the connection via socket, you need to indentify
-   * the process IP and process Port; additionally, weight is the cost to
-   * transmitting data through the link
-   * <p/>
-   * This command does trigger the link database synchronization
-   */
-  private void processConnect(String processIP, short processPort, String simulatedIP, short weight) {
+	}
 
-  }
+	/**
+	 * output the neighbors of the routers
+	 */
+	private void processNeighbors() {
+		for (int i = 0; i < ports.length; i++) {
+			if (ports[i] != null && ports[i].router2.status == RouterStatus.TWO_WAY) {
+				System.out.println("IP address of neighbor " + (i + 1) + ": " + ports[i].router2.simulatedIPAddress);
+			}
+		}
+	}
 
-  /**
-   * output the neighbors of the routers
-   */
-  private void processNeighbors() {
-    for (int i = 0; i < 4; i++) {
-      if (ports[i] != null) {
-        System.out.println("IP address of neighbor " + (i + 1) + ": " + ports[i].router2.simulatedIPAddress);
-      }
-    }
-  }
+	/**
+	 * disconnect with all neighbors and quit the program
+	 */
+	private void processQuit() {
 
-  /**
-   * disconnect with all neighbors and quit the program
-   */
-  private void processQuit() {
+	}
 
-  }
+	// <--------------------helper functions----------------------->
 
-  public void terminal() {
-    try {
-      InputStreamReader isReader = new InputStreamReader(System.in);
-      BufferedReader br = new BufferedReader(isReader);
-      System.out.print(">> ");
-      String command = br.readLine();
-      while (true) {
-        if (command.startsWith("detect ")) {
-          String[] cmdLine = command.split(" ");
-          processDetect(cmdLine[1]);
-        } else if (command.startsWith("disconnect ")) {
-          String[] cmdLine = command.split(" ");
-          processDisconnect(Short.parseShort(cmdLine[1]));
-        } else if (command.startsWith("quit")) {
-          processQuit();
-        } else if (command.startsWith("attach ")) {
-          String[] cmdLine = command.split(" ");
-          processAttach(cmdLine[1], Short.parseShort(cmdLine[2]), cmdLine[3], Short.parseShort(cmdLine[4]));
-        } else if (command.equals("start")) {
-          processStart();
-        } else if (command.equals("connect ")) {
-          String[] cmdLine = command.split(" ");
-          processConnect(cmdLine[1], Short.parseShort(cmdLine[2]), cmdLine[3], Short.parseShort(cmdLine[4]));
-        } else if (command.equals("neighbors")) {
-          // output neighbors
-          processNeighbors();
-        } else {
-          // invalid command
-          break;
-        }
-        System.out.print(">> ");
-        command = br.readLine();
-      }
-      isReader.close();
-      br.close();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
+	// return -1 if not found else return the available index.
+	private int findAvailablePort() {
+		for (int i = 0; i < ports.length; i++) {
+			if (ports[i] == null) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private boolean containsIP(String simulatedIP) {
+		for (int i = 0; i < ports.length; i++) {
+			if (ports[i] != null) {
+				if (ports[i].router2.simulatedIPAddress.equals(simulatedIP)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	// create a LSA
+	private LSA createLSA() {
+		LSA lsa = new LSA();
+		// retrive the latest seqNum from db
+		int currentSeq = lsd._store.get(rd.simulatedIPAddress).lsaSeqNumber;
+		if (currentSeq == Integer.MIN_VALUE) {
+			// initialize seqNum(version) to 0
+			lsa.lsaSeqNumber = 0;
+		} else {
+			lsa.lsaSeqNumber = currentSeq + 1;
+		}
+
+		lsa.linkStateID = rd.simulatedIPAddress;
+
+		lsa.links = new LinkedList<LinkDescription>();
+		for (int i = 0; i < ports.length; i++) {
+			if (ports[i] != null && ports[i].router2.status != null) { // valid connection
+				LinkDescription ld = new LinkDescription(ports[i].router2.simulatedIPAddress,
+						ports[i].router2.processPortNumber, ports[i].weight);
+				lsa.links.add(ld);
+			}
+		}
+
+		// update lsd
+		lsd.add(rd.simulatedIPAddress, lsa);
+		return lsa;
+	}
+
+	// broadcasts LSAUPDATE whiche conatins the latest info of the link sate to all neighbors
+	private void broadcastUpdate(LSA lsa) {
+		Vector<LSA> links = new Vector<LSA>();
+		// construct the LSAUPDATE packet
+		for (int i = 0; i < ports.length; i++) {
+			if (ports[i] != null) {
+				Socket client;
+				try {
+					client = new Socket(ports[i].router2.processIPAddress, ports[i].router2.processPortNumber);
+					ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+					Packet LSAUPDATE = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 1);
+					links.add(lsa);
+					LSAUPDATE.lsaArray = links;
+					out.writeObject(LSAUPDATE);
+				} catch (UnknownHostException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+
+		}
+	}
+
+	public void terminal() {
+		try {
+			InputStreamReader isReader = new InputStreamReader(System.in);
+			BufferedReader br = new BufferedReader(isReader);
+			System.out.print(">> ");
+			String command = br.readLine();
+			while (true) {
+				if (command.startsWith("detect ")) {
+					String[] cmdLine = command.split(" ");
+					processDetect(cmdLine[1]);
+				} else if (command.startsWith("disconnect ")) {
+					String[] cmdLine = command.split(" ");
+					processDisconnect(Short.parseShort(cmdLine[1]));
+				} else if (command.startsWith("quit")) {
+					processQuit();
+				} else if (command.startsWith("attach ")) {
+					String[] cmdLine = command.split(" ");
+					processAttach(cmdLine[1], Short.parseShort(cmdLine[2]), cmdLine[3], Short.parseShort(cmdLine[4]));
+				} else if (command.equals("start")) {
+					processStart();
+				} else if (command.equals("connect ")) {
+					String[] cmdLine = command.split(" ");
+					processConnect(cmdLine[1], Short.parseShort(cmdLine[2]), cmdLine[3], Short.parseShort(cmdLine[4]));
+				} else if (command.equals("neighbors")) {
+					// output neighbors
+					processNeighbors();
+				} else {
+					// invalid command
+					break;
+				}
+				System.out.print(">> ");
+				command = br.readLine();
+			}
+			isReader.close();
+			br.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
 }
