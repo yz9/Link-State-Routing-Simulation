@@ -23,12 +23,31 @@ public class LinkStateDatabase {
 	 * IP address
 	 */
 	String getShortestPath(String destinationIP) {
-		//TODO: fill the implementation here
+		//TODO: fill the implementation here :)
+		//add helper functions getWeightBetween & getAttachedNodes that may use for this part
 	    return null;
 	}
 
 
 	// <--------------------helper functions----------------------->
+
+	private int getWeightBetween(LSA start, LSA target) {
+		for (LinkDescription ld : start.links) {
+			if (ld.linkID.equals(target.linkStateID)) {
+				return ld.tosMetrics;
+			}
+		}
+		return -1;
+	}
+
+	private LinkedList<LSA> getAttachedNodes(LSA node) {
+		LinkedList<LSA> neighbors = new LinkedList<LSA>();
+		for (LinkDescription ld : node.links) {
+			LSA neighbor = _store.get(ld.linkID);
+			neighbors.add(neighbor);
+		}
+		return neighbors;
+	}
 
 	public void addNewLinkToDB(Link link) {
 		LSA newLsa = new LSA(rd.simulatedIPAddress, getSeqNumber(rd.simulatedIPAddress)+1);
