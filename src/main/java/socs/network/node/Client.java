@@ -15,13 +15,13 @@ public class Client implements Runnable {
 	private RouterDescription rd;
 	private Socket client;
 	private Link[] ports;
-	private LinkStateDatabase lsd;
+	private LinkStateDatabase db;
 
 	public Client(Socket client, RouterDescription rd, Link[] ports, LinkStateDatabase lsd) {
 		this.client = client;
 		this.rd = rd;
 		this.ports = ports;
-		this.lsd = lsd;
+		this.db = lsd;
 	}
 
 	public void run() {
@@ -87,7 +87,7 @@ public class Client implements Runnable {
 					// construct a new lsa
 					LSA lsa = createLSA();
 					// broadcast the update to all neighbors
-					broadcastUpdate(lsa);
+					broadcastLSA(lsa);
 
 				} else {
 					System.err.println("Already connected with router " + ports[index].router2.simulatedIPAddress);
@@ -103,7 +103,7 @@ public class Client implements Runnable {
 				 */
 
 				// retrive old LSA from the database
-				LSA oldLSA = lsd._store.get(packet.srcIP);
+				LSA oldLSA = db._store.get(packet.srcIP);
 				// get the most recent lsa sent from client (stored in lsaArray)
 				LSA newLSA = getMostRencentLSA(packet.lsaArray);
 				// compare the seqNum, if newLSA has a larger seqNumber then we need to update db
@@ -118,21 +118,21 @@ public class Client implements Runnable {
 						if (ld.tosMetrics != ports[index].weight && ld.tosMetrics > 0) {
 							// update weight & LSA
 							ports[index].weight = (short) ld.tosMetrics;
-							LSA curLSA = lsd._store.get(rd.simulatedIPAddress);
+							LSA curLSA = db._store.get(rd.simulatedIPAddress);
 							curLSA.links = createLinks();
-							lsd.add(rd.simulatedIPAddress, curLSA);
+							db.add(rd.simulatedIPAddress, curLSA);
 							// broadcast our current LSA to all neighbors
-							broadcastUpdate(curLSA);
+							broadcastLSA(curLSA);
 						}
 					}
 					// put the newLSA to db
-					lsd.add(packet.srcIP, newLSA);
+					db.add(packet.srcIP, newLSA);
 
 					// forward the packet to all neighbors
 					for (int i = 0; i < ports.length; i++) {
 						if (ports[i] != null && !ports[i].router2.simulatedIPAddress.equals(packet.srcIP)) {
 							// forward LSAUPDATE packet to its neighbors
-							forward(packet);
+							forwardPacket(packet);
 						}
 					}
 				}
@@ -188,7 +188,7 @@ public class Client implements Runnable {
 	private LSA createLSA() {
 		LSA lsa = new LSA();
 		// retrive the latest seqNum from db
-		int currentSeq = lsd._store.get(rd.simulatedIPAddress).lsaSeqNumber;
+		int currentSeq = db._store.get(rd.simulatedIPAddress).lsaSeqNumber;
 		if (currentSeq == Integer.MIN_VALUE) {
 			// initialize seqNum(version) to 0
 			lsa.lsaSeqNumber = 0;
@@ -207,13 +207,13 @@ public class Client implements Runnable {
 			}
 		}
 
-		// update lsd
-		lsd.add(rd.simulatedIPAddress, lsa);
+		// update link state database
+		db.add(rd.simulatedIPAddress, lsa);
 		return lsa;
 	}
 
 	// broadcasts LSAUPDATE whiche conatins the latest info of the link sate to all neighbors
-	private void broadcastUpdate(LSA lsa) {
+	private void broadcastLSA(LSA lsa) {
 		Vector<LSA> links = new Vector<LSA>();
 		// construct the LSAUPDATE packet
 		for (int i = 0; i < ports.length; i++) {
@@ -222,15 +222,13 @@ public class Client implements Runnable {
 				try {
 					client = new Socket(ports[i].router2.processIPAddress, ports[i].router2.processPortNumber);
 					ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-					Packet LSAUPDATE = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 1);
+					Packet lsaUpdate = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 1);
 					links.add(lsa);
-					LSAUPDATE.lsaArray = links;
-					out.writeObject(LSAUPDATE);
+					lsaUpdate.lsaArray = links;
+					out.writeObject(lsaUpdate);
 				} catch (UnknownHostException e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				} catch (IOException e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
 			}
@@ -238,7 +236,7 @@ public class Client implements Runnable {
 	}
 
 	// forward the LSAUPDATE to all neighbors
-	private void forward(Packet packet) throws IOException {
+	private void forwardPacket(Packet packet) throws IOException {
 		for (int i = 0; i < ports.length; i++) {
 			if (ports[i] != null) {
 				Socket clientSocket = new Socket(ports[i].router2.processIPAddress, ports[i].router2.processPortNumber);
@@ -270,7 +268,7 @@ public class Client implements Runnable {
 	private boolean needUpdate(LSA oldLSA, LSA newLSA) {
 		if (oldLSA == null) {
 			LSA lsa = createLSA();
-			broadcastUpdate(lsa);
+			broadcastLSA(lsa);
 			return true;
 		}
 		if (newLSA.lsaSeqNumber > oldLSA.lsaSeqNumber) {
