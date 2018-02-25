@@ -10,10 +10,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Vector;
 
@@ -163,29 +161,11 @@ public class Router {
 						// broadcast LSAUPDATE
 						broadcastUpdate(lsa);
 
-						/*
-						 * LSA lsa = new LSA(); createLSA1(lsa); Packet LSAUPDATE = new Packet();
-						 * Vector<LSA> links = new Vector<LSA>(); // for (int i = 0; i < ports.length;
-						 * i++) { // if (ports[i] != null) { LSAUPDATE.srcIP = rd.simulatedIPAddress;
-						 * LSAUPDATE.dstIP = ports[i].router2.simulatedIPAddress; LSAUPDATE.sospfType =
-						 * (short) 1; links.add(lsa); LSAUPDATE.lsaArray = links;
-						 *
-						 * out.writeObject(packet);
-						 *
-						 */
 						// iterative
 					} else {
 						System.err.println("Already connected with router " + ports[i].router2.simulatedIPAddress);
 					}
-					/*
-					 * LSA lsa = new LSA(); createLSA1(lsa); Packet LSAUPDATE = new Packet();
-					 * Vector<LSA> links = new Vector<LSA>(); // for (int i = 0; i < ports.length;
-					 * i++) { // if (ports[i] != null) { LSAUPDATE.srcIP = rd.simulatedIPAddress;
-					 * LSAUPDATE.dstIP = ports[i].router2.simulatedIPAddress; LSAUPDATE.sospfType =
-					 * (short) 1; links.add(lsa); LSAUPDATE.lsaArray = links;
-					 *
-					 * out.writeObject(packet);
-					 */
+
 					// clean up
 					out.close();
 					in.close();
