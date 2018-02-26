@@ -103,7 +103,7 @@ public class Client implements Runnable {
 				 */
 
 				// retrive old LSA from the database
-				LSA oldLSA = db._store.get(packet.srcIP);
+				LSA oldLSA = db.storage.get(packet.srcIP);
 				// get the most recent lsa sent from client (stored in lsaArray)
 				LSA newLSA = getMostRencentLSA(packet.lsaArray);
 				// compare the seqNum, if newLSA has a larger seqNumber then we need to update db
@@ -115,10 +115,11 @@ public class Client implements Runnable {
 					// if both exists then update the information
 					if (index != -1 && ld != null) {
 						// info not equal
-						if (ld.tosMetrics != ports[index].weight && ld.tosMetrics > 0) {
+						if (ld.weight != ports[index].weight && ld.weight > 0) {
 							// update weight & LSA
-							ports[index].weight = (short) ld.tosMetrics;
-							LSA curLSA = db._store.get(rd.simulatedIPAddress);
+							ports[index].weight = (short) ld.weight;
+							
+							LSA curLSA = db.storage.get(rd.simulatedIPAddress);
 							curLSA.links = createLinks();
 							db.add(rd.simulatedIPAddress, curLSA);
 							// broadcast our current LSA to all neighbors
@@ -188,7 +189,7 @@ public class Client implements Runnable {
 	private LSA createLSA() {
 		LSA lsa = new LSA();
 		// retrive the latest seqNum from db
-		int currentSeq = db._store.get(rd.simulatedIPAddress).lsaSeqNumber;
+		int currentSeq = db.storage.get(rd.simulatedIPAddress).lsaSeqNumber;
 		if (currentSeq == Integer.MIN_VALUE) {
 			// initialize seqNum(version) to 0
 			lsa.lsaSeqNumber = 0;

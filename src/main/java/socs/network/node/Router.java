@@ -238,7 +238,7 @@ public class Router {
 	private LSA createLSA() {
 		LSA lsa = new LSA();
 		// retrive the latest seqNum from db
-		int currentSeq = lsd._store.get(rd.simulatedIPAddress).lsaSeqNumber;
+		int currentSeq = lsd.storage.get(rd.simulatedIPAddress).lsaSeqNumber;
 		if (currentSeq == Integer.MIN_VALUE) {
 			// initialize seqNum(version) to 0
 			lsa.lsaSeqNumber = 0;
