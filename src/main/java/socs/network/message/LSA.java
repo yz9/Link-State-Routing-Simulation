@@ -3,6 +3,7 @@ package socs.network.message;
 import java.io.Serializable;
 import java.util.LinkedList;
 
+@SuppressWarnings("serial")
 public class LSA implements Serializable {
 
 	// IP address of the router originate this LSA
