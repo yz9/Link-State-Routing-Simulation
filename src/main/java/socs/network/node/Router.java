@@ -59,7 +59,13 @@ public class Router {
 	 *            the port number which the link attaches at
 	 */
 	private void processDisconnect(short portNumber) {
+		int curPort = getCurrentPortSize();
+		if (portNumber < 0 || portNumber > curPort){
+			System.err.println("Invalid port number.");
+			return;
+		}
 
+		// TODO disconnect router
 	}
 
 	/**
@@ -190,7 +196,7 @@ public class Router {
 	 * This command does trigger the link database synchronization
 	 */
 	private void processConnect(String processIP, short processPort, String simulatedIP, short weight) {
-
+		// TODO
 	}
 
 	/**
@@ -208,7 +214,14 @@ public class Router {
 	 * disconnect with all neighbors and quit the program
 	 */
 	private void processQuit() {
-
+		for (int i = 0; i < ports.length; i++){
+			// disconnect with all neighbors
+			if (ports[i] != null && ports[i].router2.status == RouterStatus.TWO_WAY){
+				this.processDisconnect((short) i);
+			}
+		}
+		// quit the program
+		System.exit(0);
 	}
 
 	// <--------------------helper functions----------------------->
@@ -286,6 +299,16 @@ public class Router {
 			}
 
 		}
+	}
+
+	private short getCurrentPortSize(){
+		short size = 0;
+		for(int i = 0; i < ports.length; i++){
+			if (ports[i] != null && ports[i].router2 != null){
+				size++;
+			}
+		}
+		return size;
 	}
 
 	public void terminal() {
