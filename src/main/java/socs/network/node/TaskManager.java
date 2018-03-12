@@ -140,7 +140,6 @@ public class TaskManager implements Runnable {
 				else{
 					// LSP has already been flooded
 				}
-				System.out.print(">> ");
 
 			} else if (packet.sospfType == 2) {
 				/*

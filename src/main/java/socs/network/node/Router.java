@@ -66,6 +66,7 @@ public class Router {
 		}
 
 		// TODO disconnect router
+
 	}
 
 	/**
@@ -196,6 +197,7 @@ public class Router {
 	 * This command does trigger the link database synchronization
 	 */
 	private void processConnect(String processIP, short processPort, String simulatedIP, short weight) {
+
 		// TODO
 	}
 
@@ -221,6 +223,7 @@ public class Router {
 			}
 		}
 		// quit the program
+		System.out.println("Quit successfully");
 		System.exit(0);
 	}
 
