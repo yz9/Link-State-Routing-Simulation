@@ -11,13 +11,13 @@ import java.net.UnknownHostException;
 import java.util.LinkedList;
 import java.util.Vector;
 
-public class Client implements Runnable {
+public class TaskManager implements Runnable {
 	private RouterDescription rd;
 	private Socket client;
 	private Link[] ports;
 	private LinkStateDatabase db;
 
-	public Client(Socket client, RouterDescription rd, Link[] ports, LinkStateDatabase lsd) {
+	public TaskManager(Socket client, RouterDescription rd, Link[] ports, LinkStateDatabase lsd) {
 		this.client = client;
 		this.rd = rd;
 		this.ports = ports;
@@ -28,7 +28,7 @@ public class Client implements Runnable {
 		try {
 			ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 			ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-			// get the packet client stails
+			// get the packet client
 			Packet packet = (Packet) in.readObject();
 			// empty packet
 			if (packet == null) {
@@ -118,7 +118,7 @@ public class Client implements Runnable {
 						if (ld.weight != ports[index].weight && ld.weight > 0) {
 							// update weight & LSA
 							ports[index].weight = (short) ld.weight;
-							
+
 							LSA curLSA = db.storage.get(rd.simulatedIPAddress);
 							curLSA.links = createLinks();
 							db.add(rd.simulatedIPAddress, curLSA);
@@ -140,6 +140,7 @@ public class Client implements Runnable {
 				else{
 					// LSP has already been flooded
 				}
+				System.out.print(">> ");
 
 			} else if (packet.sospfType == 2) {
 				/*
@@ -147,6 +148,7 @@ public class Client implements Runnable {
 				 */
 				// out.writeObject("Success");
 				System.out.println("--- attached with " + packet.srcIP + " ---");
+				System.out.print(">> ");
 			} else {
 				System.err.println("Error: Unexpected error");
 			}
@@ -237,6 +239,7 @@ public class Client implements Runnable {
 	}
 
 	// forward the LSAUPDATE to all neighbors
+	@SuppressWarnings("resource")
 	private void forwardPacket(Packet packet) throws IOException {
 		for (int i = 0; i < ports.length; i++) {
 			if (ports[i] != null) {
@@ -246,15 +249,6 @@ public class Client implements Runnable {
 				output.writeObject(packet);
 			}
 		}
-	}
-
-	private boolean needUpdate(LSA lsa, Vector<LSA> lsaArray) {
-		for (LSA old : lsaArray) {
-			if (old.lsaSeqNumber > lsa.lsaSeqNumber) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private LinkDescription getDescriptionByIP(LinkedList<LinkDescription> list) {
