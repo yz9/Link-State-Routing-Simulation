@@ -231,6 +231,11 @@ public class Router {
 		}
 
 		// TODO
+		/*
+		System.out.println("--- connecting to " + simulatedIP + " ---");
+		processAttach(processIP, processPort, simulatedIP, weight);
+		processStart();
+		*/
 	}
 
 	/**
