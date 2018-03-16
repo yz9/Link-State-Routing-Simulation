@@ -23,6 +23,7 @@ public class Router {
 
 	// assuming that all routers are with ports.length ports
 	volatile Link[] ports = new Link[4];
+	private boolean usedStart = false;
 
 	public Router(Configuration config) {
 		rd.simulatedIPAddress = config.getString("socs.network.router.ip");
@@ -58,16 +59,40 @@ public class Router {
 	 * @param portNumber
 	 *            the port number which the link attaches at
 	 */
-	private void processDisconnect(short portNumber) {
-		int curPort = getCurrentPortSize();
-		if (portNumber < 0 || portNumber > curPort){
-			System.err.println("Invalid port number.");
-			return;
-		}
+	 private void processDisconnect(short portNumber) {
+	     int curPort = getCurrentPortSize();
+	     if (portNumber < 0 || portNumber > curPort){
+	         System.err.println("Invalid port number.");
+	         return;
+	     }
 
-		// TODO disconnect router
+	     RouterDescription router2 = this.ports[portNumber].router2;
 
-	}
+	     try {
+	         Socket client = new Socket(router2.processIPAddress, router2.processPortNumber);
+	         ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+	         ObjectInputStream in = new ObjectInputStream(client.getInputStream());
+
+	         // initiate a new packet
+	         Packet packet = new Packet(router2.simulatedIPAddress, null, (short) 3);
+	         out.writeObject(packet);
+
+	         this.ports[portNumber] = null;
+	         LSA lsa = createLSA();
+	         broadcastUpdate(lsa);
+
+	         // clean up
+	         in.close();
+	         out.close();
+	         client.close();
+	     } catch (UnknownHostException e) {
+	         // TODO Auto-generated catch block
+	         e.printStackTrace();
+	     } catch (IOException e) {
+	         // TODO Auto-generated catch block
+	         e.printStackTrace();
+	     }
+	 }
 
 	/**
 	 * attach the link to the remote router, which is identified by the given
@@ -129,6 +154,8 @@ public class Router {
 			System.err.println("You haven't attached to any other router yet.");
 			return;
 		}
+
+		this.usedStart = true;
 
 		for (int i = 0; i < ports.length; i++) {
 			if (ports[i] != null) {
@@ -197,7 +224,10 @@ public class Router {
 	 * This command does trigger the link database synchronization
 	 */
 	private void processConnect(String processIP, short processPort, String simulatedIP, short weight) {
-
+		if (!usedStart){
+			System.err.println("Must use start command first");
+			return;
+		}
 		// TODO
 	}
 

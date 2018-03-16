@@ -148,6 +148,10 @@ public class TaskManager implements Runnable {
 				// out.writeObject("Success");
 				System.out.println("--- attached with " + packet.srcIP + " ---");
 				System.out.print(">> ");
+				
+			} else if (packet.sospfType == 3){
+				// TODO
+
 			} else {
 				System.err.println("Error: Unexpected error");
 			}

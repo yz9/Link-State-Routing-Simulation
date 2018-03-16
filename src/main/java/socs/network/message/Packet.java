@@ -14,7 +14,7 @@ public class Packet implements Serializable {
 	public String dstIP;
 
 	// common header
-	public short sospfType; // 0 - HELLO, 1 - LinkState Update
+	public short sospfType; // 0 - HELLO, 1 - LinkState Update, 2 - Attach, 3 - Disconnect  
 	public String routerID;
 
 	// simulated IP address
