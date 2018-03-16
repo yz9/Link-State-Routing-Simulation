@@ -74,7 +74,8 @@ public class Router {
 	         ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 
 	         // initiate a new packet
-	         Packet packet = new Packet(router2.simulatedIPAddress, null, (short) 3);
+			 // NOTE! here:
+	         Packet packet = new Packet(rd.simulatedIPAddress, router2.simulatedIPAddress, (short) 3);
 	         out.writeObject(packet);
 
 	         this.ports[portNumber] = null;
@@ -228,6 +229,7 @@ public class Router {
 			System.err.println("Must use start command first");
 			return;
 		}
+
 		// TODO
 	}
 

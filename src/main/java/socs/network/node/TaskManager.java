@@ -148,10 +148,18 @@ public class TaskManager implements Runnable {
 				// out.writeObject("Success");
 				System.out.println("--- attached with " + packet.srcIP + " ---");
 				System.out.print(">> ");
-				
-			} else if (packet.sospfType == 3){
-				// TODO
 
+			} else if (packet.sospfType == 3){
+				// TODO disconnect
+				int index = getRouter2Index(packet.srcIP);
+				System.out.println("disconnect index :" + index);
+				ports[index] = null;
+				// construct a new lsa
+				LSA lsa = createLSA();
+				// broadcast the update to all neighbors
+				broadcastLSA(lsa);
+				System.out.print(">> ");
+				
 			} else {
 				System.err.println("Error: Unexpected error");
 			}
