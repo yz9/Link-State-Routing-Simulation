@@ -8,8 +8,10 @@ public class RouterDescription {
 	String simulatedIPAddress;
 	// status of the router
 	RouterStatus status;
+	long timer;
 
 	public RouterDescription() {
+		timer = System.currentTimeMillis();
 	}
 
 	public RouterDescription(String processIPAddress, short processPortNumber, String simulatedIPAddress) {

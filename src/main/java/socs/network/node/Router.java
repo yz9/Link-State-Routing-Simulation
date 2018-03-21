@@ -10,9 +10,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Date;
 import java.util.LinkedList;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
 
 public class Router {
@@ -24,6 +28,8 @@ public class Router {
 	// assuming that all routers are with ports.length ports
 	volatile Link[] ports = new Link[4];
 	private boolean usedStart = false;
+
+	protected long INTERVAL = 7000;
 
 	public Router(Configuration config) {
 		rd.simulatedIPAddress = config.getString("socs.network.router.ip");
@@ -39,6 +45,7 @@ public class Router {
 		// now create the server socket
 		Thread server = new Thread(new Server(rd, ports, lsd));
 		server.start();
+		startHeartBeat();
 	}
 
 	/**
@@ -59,41 +66,41 @@ public class Router {
 	 * @param portNumber
 	 *            the port number which the link attaches at
 	 */
-	 private void processDisconnect(short portNumber) {
-	     int curPort = getCurrentPortSize();
-	     if (portNumber < 0 || portNumber > curPort){
-	         System.err.println("Invalid port number.");
-	         return;
-	     }
+	private void processDisconnect(short portNumber) {
+		int curPort = getCurrentPortSize();
+		if (portNumber < 0 || portNumber > curPort) {
+			System.err.println("Invalid port number.");
+			return;
+		}
 
-	     RouterDescription router2 = this.ports[portNumber].router2;
+		RouterDescription router2 = this.ports[portNumber].router2;
 
-	     try {
-	         Socket client = new Socket(router2.processIPAddress, router2.processPortNumber);
-	         ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-	         ObjectInputStream in = new ObjectInputStream(client.getInputStream());
+		try {
+			Socket client = new Socket(router2.processIPAddress, router2.processPortNumber);
+			ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+			ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 
-	         // initiate a new packet
-			 // NOTE! here:
-	         Packet packet = new Packet(rd.simulatedIPAddress, router2.simulatedIPAddress, (short) 3);
-	         out.writeObject(packet);
+			// initiate a new packet
+			// NOTE! here:
+			Packet packet = new Packet(rd.simulatedIPAddress, router2.simulatedIPAddress, (short) 3);
+			out.writeObject(packet);
 
-	         this.ports[portNumber] = null;
-	         LSA lsa = createLSA();
-	         broadcastUpdate(lsa);
+			this.ports[portNumber] = null;
+			LSA lsa = createLSA();
+			broadcastUpdate(lsa);
 
-	         // clean up
-	         in.close();
-	         out.close();
-	         client.close();
-	     } catch (UnknownHostException e) {
-	         // TODO Auto-generated catch block
-	         e.printStackTrace();
-	     } catch (IOException e) {
-	         // TODO Auto-generated catch block
-	         e.printStackTrace();
-	     }
-	 }
+			// clean up
+			in.close();
+			out.close();
+			client.close();
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 
 	/**
 	 * attach the link to the remote router, which is identified by the given
@@ -216,6 +223,91 @@ public class Router {
 		}
 	}
 
+	private void startHeartBeat() {
+		final Router that = this;
+		Thread a = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				while (true) {
+					System.out.println(that.rd.simulatedIPAddress + " beep");
+					// tell all the neighbors that i am still alive
+					for (int i = 0; i < ports.length; i++) {
+						if (ports[i] != null) {
+							try {
+								Socket client = new Socket(ports[i].router2.processIPAddress,
+										ports[i].router2.processPortNumber);
+								
+								ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+								ObjectInputStream in = new ObjectInputStream(client.getInputStream());
+
+								String destIP = ports[i].router2.simulatedIPAddress;
+								short destPort = ports[i].router2.processPortNumber;
+
+								// create heartbeat packet and send it
+								Packet packet = new Packet(that.rd.simulatedIPAddress, destIP, (short) 4);
+								packet.srcProcessIP = that.rd.processIPAddress;
+								packet.srcProcessPort = that.rd.processPortNumber;
+								
+								// write packet
+								out.writeObject(packet);
+
+								String recv = (String) in.readObject();
+
+								if (recv == null) {
+									System.out.println("router" + packet.srcIP + " is dead");
+									int index = getRouter2Index(packet.srcIP);
+									System.out.println("disconnect index :" + index);
+									ports[index] = null;
+									// construct a new lsa
+									LSA lsa = createLSA();
+									// broadcast the update to all neighbors
+									broadcastUpdate(lsa);
+									System.out.print(">> ");
+									break;
+								} else {
+									System.out.println(that.rd.simulatedIPAddress + " alive");
+								}
+
+								// clean up
+								out.close();
+								in.close();
+								client.close();
+							} catch (UnknownHostException e) {
+								System.err.println("Trying to connect to unknown host: " + e);
+							} catch (ConnectException e) {
+								System.err.println("this router is dead");
+								int index = getRouter2Index(ports[i].router2.simulatedIPAddress);
+								System.out.println("disconnect index :" + index);
+								ports[index] = null;
+								// construct a new lsa
+								LSA lsa = createLSA();
+								// broadcast the update to all neighbors
+								broadcastUpdate(lsa);
+								System.out.print(">> ");
+							} catch (IOException e) {
+								e.printStackTrace();
+							} catch (ClassNotFoundException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							} catch (Exception e) {
+								
+							}
+
+						}
+					}
+					try {
+						Thread.sleep(INTERVAL);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+
+		});
+		a.start();
+	}
+
 	/**
 	 * attach the link to the remote router, which is identified by the given
 	 * simulated ip; to establish the connection via socket, you need to indentify
@@ -226,18 +318,18 @@ public class Router {
 	 */
 	private void processConnect(String processIP, short processPort, String simulatedIP, short weight) {
 		// init with start first
-		if (!usedStart){
+		if (!usedStart) {
 			System.err.println("Must use start command first");
 			return;
 		}
-		
+
 		// if the router is connected already, don't do anything
-		for(Link link: ports) {
-			if(link.router2.simulatedIPAddress.equals(simulatedIP)) {
+		for (Link link : ports) {
+			if (link.router2.simulatedIPAddress.equals(simulatedIP)) {
 				return;
 			}
 		}
-		
+
 		// now connect the new router
 		System.out.println("--- connecting to " + simulatedIP + " ---");
 		processAttach(processIP, processPort, simulatedIP, weight);
@@ -249,10 +341,15 @@ public class Router {
 	 * output the neighbors of the routers
 	 */
 	private void processNeighbors() {
+		boolean hasNeighbor = false;
 		for (int i = 0; i < ports.length; i++) {
 			if (ports[i] != null && ports[i].router2.status == RouterStatus.TWO_WAY) {
+				hasNeighbor = true;
 				System.out.println("IP address of neighbor " + (i + 1) + ": " + ports[i].router2.simulatedIPAddress);
 			}
+		}
+		if(!hasNeighbor) {
+			System.out.println("no neighbors");
 		}
 	}
 
@@ -260,9 +357,9 @@ public class Router {
 	 * disconnect with all neighbors and quit the program
 	 */
 	private void processQuit() {
-		for (int i = 0; i < ports.length; i++){
+		for (int i = 0; i < ports.length; i++) {
 			// disconnect with all neighbors
-			if (ports[i] != null && ports[i].router2.status == RouterStatus.TWO_WAY){
+			if (ports[i] != null && ports[i].router2.status == RouterStatus.TWO_WAY) {
 				this.processDisconnect((short) i);
 			}
 		}
@@ -322,7 +419,8 @@ public class Router {
 		return lsa;
 	}
 
-	// broadcasts LSAUPDATE whiche conatins the latest info of the link sate to all neighbors
+	// broadcasts LSAUPDATE whiche conatins the latest info of the link sate to all
+	// neighbors
 	private void broadcastUpdate(LSA lsa) {
 		Vector<LSA> links = new Vector<LSA>();
 		// construct the LSAUPDATE packet
@@ -332,7 +430,8 @@ public class Router {
 				try {
 					client = new Socket(ports[i].router2.processIPAddress, ports[i].router2.processPortNumber);
 					ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-					Packet LSAUPDATE = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress, (short) 1);
+					Packet LSAUPDATE = new Packet(rd.simulatedIPAddress, ports[i].router2.simulatedIPAddress,
+							(short) 1);
 					links.add(lsa);
 					LSAUPDATE.lsaArray = links;
 					out.writeObject(LSAUPDATE);
@@ -348,10 +447,10 @@ public class Router {
 		}
 	}
 
-	private short getCurrentPortSize(){
+	private short getCurrentPortSize() {
 		short size = 0;
-		for(int i = 0; i < ports.length; i++){
-			if (ports[i] != null && ports[i].router2 != null){
+		for (int i = 0; i < ports.length; i++) {
+			if (ports[i] != null && ports[i].router2 != null) {
 				size++;
 			}
 		}
@@ -398,4 +497,14 @@ public class Router {
 		}
 	}
 
+	// return -1 if not found else return the available index.
+	public int getRouter2Index(String srcIP) {
+		for (int i = 0; i < ports.length; i++) {
+			if (ports[i] != null && ports[i].router2.simulatedIPAddress.equals(srcIP)) {
+				return i;
+			}
+		}
+		// not found
+		return -1;
+	}
 }

@@ -176,24 +176,15 @@ public class TaskManager implements Runnable {
 				// update the timer for the neighbors
 				int index = getRouter2Index(packet.srcIP);
 				System.out.println(packet.srcIP + " is Alive");
+				 out.writeObject("Alive");
+
+				
+				
+				
 				neighborStatus.put(index, System.currentTimeMillis());
 			} else {
 				System.err.println("Error: Unexpected error");
 			}
-			
-			
-			// send the heart beat packet every 5 seconds
-			Timer t = new Timer();
-			t.schedule(new TimerTask() {
-
-				@Override
-				public void run() {
-					// TODO Auto-generated method stub
-					System.out.println("hello world");
-				}
-			}, 0, 5000);
-			
-			
 			// clean up
 			client.close();
 			in.close();
