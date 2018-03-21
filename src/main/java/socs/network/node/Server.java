@@ -24,7 +24,7 @@ public class Server implements Runnable {
 				Socket connection = socket.accept();
 				// System.out.println("Just connected to " +
 				// connection.getRemoteSocketAddress());
-				Thread client = new Thread(new Client(connection, this.rd, this.ports, lsd));
+				Thread client = new Thread(new TaskManager(connection, this.rd, this.ports, lsd));
 				client.start();
 				// client.connect();
 			}
