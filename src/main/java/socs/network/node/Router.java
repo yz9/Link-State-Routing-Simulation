@@ -29,7 +29,7 @@ public class Router {
 	volatile Link[] ports = new Link[4];
 	private boolean usedStart = false;
 
-	protected long INTERVAL = 7000;
+	protected long INTERVAL = 10000;
 
 	public Router(Configuration config) {
 		rd.simulatedIPAddress = config.getString("socs.network.router.ip");
@@ -230,13 +230,14 @@ public class Router {
 			public void run() {
 				while (true) {
 					System.out.println(that.rd.simulatedIPAddress + " beep");
+					System.out.print(">> ");
 					// tell all the neighbors that i am still alive
 					for (int i = 0; i < ports.length; i++) {
 						if (ports[i] != null) {
 							try {
 								Socket client = new Socket(ports[i].router2.processIPAddress,
 										ports[i].router2.processPortNumber);
-								
+
 								ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
 								ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 
@@ -247,7 +248,7 @@ public class Router {
 								Packet packet = new Packet(that.rd.simulatedIPAddress, destIP, (short) 4);
 								packet.srcProcessIP = that.rd.processIPAddress;
 								packet.srcProcessPort = that.rd.processPortNumber;
-								
+
 								// write packet
 								out.writeObject(packet);
 
@@ -290,7 +291,7 @@ public class Router {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							} catch (Exception e) {
-								
+
 							}
 
 						}

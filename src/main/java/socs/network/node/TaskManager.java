@@ -20,7 +20,7 @@ public class TaskManager implements Runnable {
 	private Link[] ports;
 	private LinkStateDatabase db;
 	private final long TIMEOUT = 10000; // 10 seconds timeout
-	private HashMap<Integer, Long> neighborStatus; 
+	private HashMap<Integer, Long> neighborStatus;
 
 	public TaskManager(Socket client, RouterDescription rd, Link[] ports, LinkStateDatabase lsd) {
 		this.client = client;
@@ -28,12 +28,12 @@ public class TaskManager implements Runnable {
 		this.ports = ports;
 		this.db = lsd;
 		this.neighborStatus = new HashMap<>();
-		
+
 	}
 
 	public void run() {
 		try {
-			
+
 			ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 			ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
 			// get the packet client
@@ -43,10 +43,10 @@ public class TaskManager implements Runnable {
 				System.err.println("Error: Empty packet");
 				return;
 			}
-			
-			
-			
-			
+
+
+
+
 			/*
 			 * Handle received packet accordingly based on the packet type
 			 */
@@ -171,16 +171,13 @@ public class TaskManager implements Runnable {
 				// broadcast the update to all neighbors
 				broadcastLSA(lsa);
 				System.out.print(">> ");
-				
+
 			} else if (packet.sospfType == 4) {
 				// update the timer for the neighbors
 				int index = getRouter2Index(packet.srcIP);
 				System.out.println(packet.srcIP + " is Alive");
-				 out.writeObject("Alive");
-
-				
-				
-				
+				out.writeObject("Alive");
+				System.out.print(">> ");
 				neighborStatus.put(index, System.currentTimeMillis());
 			} else {
 				System.err.println("Error: Unexpected error");
