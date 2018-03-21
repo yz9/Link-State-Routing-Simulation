@@ -8,7 +8,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
 
 public class TaskManager implements Runnable {
@@ -16,16 +19,21 @@ public class TaskManager implements Runnable {
 	private Socket client;
 	private Link[] ports;
 	private LinkStateDatabase db;
+	private final long TIMEOUT = 10000; // 10 seconds timeout
+	private HashMap<Integer, Long> neighborStatus; 
 
 	public TaskManager(Socket client, RouterDescription rd, Link[] ports, LinkStateDatabase lsd) {
 		this.client = client;
 		this.rd = rd;
 		this.ports = ports;
 		this.db = lsd;
+		this.neighborStatus = new HashMap<>();
+		
 	}
 
 	public void run() {
 		try {
+			
 			ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 			ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
 			// get the packet client
@@ -35,6 +43,10 @@ public class TaskManager implements Runnable {
 				System.err.println("Error: Empty packet");
 				return;
 			}
+			
+			
+			
+			
 			/*
 			 * Handle received packet accordingly based on the packet type
 			 */
@@ -160,9 +172,28 @@ public class TaskManager implements Runnable {
 				broadcastLSA(lsa);
 				System.out.print(">> ");
 				
+			} else if (packet.sospfType == 4) {
+				// update the timer for the neighbors
+				int index = getRouter2Index(packet.srcIP);
+				System.out.println(packet.srcIP + " is Alive");
+				neighborStatus.put(index, System.currentTimeMillis());
 			} else {
 				System.err.println("Error: Unexpected error");
 			}
+			
+			
+			// send the heart beat packet every 5 seconds
+			Timer t = new Timer();
+			t.schedule(new TimerTask() {
+
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					System.out.println("hello world");
+				}
+			}, 0, 5000);
+			
+			
 			// clean up
 			client.close();
 			in.close();

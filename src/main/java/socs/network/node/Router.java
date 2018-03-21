@@ -225,17 +225,24 @@ public class Router {
 	 * This command does trigger the link database synchronization
 	 */
 	private void processConnect(String processIP, short processPort, String simulatedIP, short weight) {
+		// init with start first
 		if (!usedStart){
 			System.err.println("Must use start command first");
 			return;
 		}
-
-		// TODO
-		/*
+		
+		// if the router is connected already, don't do anything
+		for(Link link: ports) {
+			if(link.router2.simulatedIPAddress.equals(simulatedIP)) {
+				return;
+			}
+		}
+		
+		// now connect the new router
 		System.out.println("--- connecting to " + simulatedIP + " ---");
 		processAttach(processIP, processPort, simulatedIP, weight);
 		processStart();
-		*/
+		System.out.println("--- conencted with " + simulatedIP + " ---");
 	}
 
 	/**

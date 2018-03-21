@@ -3,6 +3,9 @@ package socs.network.node;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class Server implements Runnable {
 	private RouterDescription rd;
@@ -26,7 +29,7 @@ public class Server implements Runnable {
 				// connection.getRemoteSocketAddress());
 				Thread client = new Thread(new TaskManager(connection, this.rd, this.ports, lsd));
 				client.start();
-				// client.connect();
+		
 			}
 		} catch (IOException e) {
 			e.printStackTrace();

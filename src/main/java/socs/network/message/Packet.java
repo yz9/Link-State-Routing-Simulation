@@ -14,7 +14,7 @@ public class Packet implements Serializable {
 	public String dstIP;
 
 	// common header
-	public short sospfType; // 0 - HELLO, 1 - LinkState Update, 2 - Attach, 3 - Disconnect  
+	public short sospfType; // 0 - HELLO, 1 - LinkState Update, 2 - Attach, 3 - Disconnect, 4 - Heartbeat
 	public String routerID;
 
 	// simulated IP address
@@ -46,6 +46,13 @@ public class Packet implements Serializable {
 	public static Packet AttachLinkRequest(String simulatedSrcIP, String simulatedDstIP, int weight) {
 		Packet packet = new Packet(simulatedSrcIP, simulatedDstIP, (short) 2);
 		packet.weight = weight;
+		return packet;
+	}
+	
+	// create a heartbeat packet, this means that the router is still alive
+	public static Packet HeartBeatPacket(String simulatedSrcIP, String simulatedDstIP) {
+		Packet packet = new Packet(simulatedSrcIP, simulatedDstIP, (short) 4);
+		packet.weight = 0;
 		return packet;
 	}
 }
