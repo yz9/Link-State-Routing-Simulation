@@ -13,6 +13,7 @@ import java.io.ObjectOutputStream;
 import java.net.ConnectException;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.Timer;
@@ -27,8 +28,8 @@ public class Router {
 
 	// assuming that all routers are with ports.length ports
 	volatile Link[] ports = new Link[4];
-	private boolean usedStart = false;
-
+	private volatile boolean usedStart = false;
+	static AtomicBoolean ready = new AtomicBoolean(false);
 	protected long INTERVAL = 10000;
 
 	public Router(Configuration config) {
@@ -146,6 +147,7 @@ public class Router {
 			input.close();
 			output.close();
 			remoteSocket.close();
+			ready.set(true);
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -325,17 +327,27 @@ public class Router {
 		}
 
 		// if the router is connected already, don't do anything
+
 		for (Link link : ports) {
-			if (link.router2.simulatedIPAddress.equals(simulatedIP)) {
-				return;
+			if (link != null){
+				if (link.router2.simulatedIPAddress.equals(simulatedIP)) {
+					return;
+				}
 			}
 		}
 
 		// now connect the new router
 		System.out.println("--- connecting to " + simulatedIP + " ---");
 		processAttach(processIP, processPort, simulatedIP, weight);
+		while (!ready.get()){
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 		processStart();
-		System.out.println("--- conencted with " + simulatedIP + " ---");
+		System.out.println("--- connecting with " + simulatedIP + " ---");
 	}
 
 	/**
@@ -474,11 +486,12 @@ public class Router {
 				} else if (command.startsWith("quit")) {
 					processQuit();
 				} else if (command.startsWith("attach ")) {
+					System.out.println("start attaching!!!");
 					String[] cmdLine = command.split(" ");
 					processAttach(cmdLine[1], Short.parseShort(cmdLine[2]), cmdLine[3], Short.parseShort(cmdLine[4]));
 				} else if (command.equals("start")) {
 					processStart();
-				} else if (command.equals("connect ")) {
+				} else if (command.startsWith("connect ")) {
 					String[] cmdLine = command.split(" ");
 					processConnect(cmdLine[1], Short.parseShort(cmdLine[2]), cmdLine[3], Short.parseShort(cmdLine[4]));
 				} else if (command.equals("neighbors")) {

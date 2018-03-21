@@ -44,9 +44,6 @@ public class TaskManager implements Runnable {
 				return;
 			}
 
-
-
-
 			/*
 			 * Handle received packet accordingly based on the packet type
 			 */
