@@ -29,8 +29,7 @@ public class Router {
 	// assuming that all routers are with ports.length ports
 	volatile Link[] ports = new Link[4];
 	private volatile boolean usedStart = false;
-	static AtomicBoolean ready = new AtomicBoolean(false);
-	protected long INTERVAL = 10000;
+	protected long INTERVAL = 8000;
 
 	public Router(Configuration config) {
 		rd.simulatedIPAddress = config.getString("socs.network.router.ip");
@@ -147,7 +146,6 @@ public class Router {
 			input.close();
 			output.close();
 			remoteSocket.close();
-			ready.set(true);
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -270,7 +268,7 @@ public class Router {
 								} else {
 									System.out.println(that.rd.simulatedIPAddress + " alive");
 								}
-
+								System.out.print(">> ");
 								// clean up
 								out.close();
 								in.close();
@@ -331,6 +329,7 @@ public class Router {
 		for (Link link : ports) {
 			if (link != null){
 				if (link.router2.simulatedIPAddress.equals(simulatedIP)) {
+					System.out.println("Already connected with the designated router");
 					return;
 				}
 			}
@@ -339,13 +338,6 @@ public class Router {
 		// now connect the new router
 		System.out.println("--- connecting to " + simulatedIP + " ---");
 		processAttach(processIP, processPort, simulatedIP, weight);
-		while (!ready.get()){
-			try {
-				Thread.sleep(1);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
 		processStart();
 		System.out.println("--- connecting with " + simulatedIP + " ---");
 	}
@@ -486,7 +478,6 @@ public class Router {
 				} else if (command.startsWith("quit")) {
 					processQuit();
 				} else if (command.startsWith("attach ")) {
-					System.out.println("start attaching!!!");
 					String[] cmdLine = command.split(" ");
 					processAttach(cmdLine[1], Short.parseShort(cmdLine[2]), cmdLine[3], Short.parseShort(cmdLine[4]));
 				} else if (command.equals("start")) {

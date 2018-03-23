@@ -173,8 +173,8 @@ public class TaskManager implements Runnable {
 				// update the timer for the neighbors
 				int index = getRouter2Index(packet.srcIP);
 				System.out.println(packet.srcIP + " is Alive");
-				out.writeObject("Alive");
 				System.out.print(">> ");
+				out.writeObject("Alive");
 				neighborStatus.put(index, System.currentTimeMillis());
 			} else {
 				System.err.println("Error: Unexpected error");
