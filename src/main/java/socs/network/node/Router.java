@@ -362,12 +362,14 @@ public class Router {
 	 * disconnect with all neighbors and quit the program
 	 */
 	private void processQuit() {
+		/*
 		for (int i = 0; i < ports.length; i++) {
 			// disconnect with all neighbors
 			if (ports[i] != null && ports[i].router2.status == RouterStatus.TWO_WAY) {
 				this.processDisconnect((short) i);
 			}
 		}
+		*/
 		// quit the program
 		System.out.println("Quit successfully");
 		System.exit(0);
